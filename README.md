@@ -1,4 +1,19 @@
 # Linux_IPC_Example
+## 环境要求
+- g++ 5.4
+- cmake 3.5
+- linux ubuntu 16.04
+- sudo权限(为了清空环境中的共享内存)
+## 使用方法
+在命令行输入：
+```{bash}
+cd src
+cmake .
+make
+cd ..
+cp ./sample/sample1.in ./sample.in
+./src/Demo
+```
 
 ## 任务描述
 该项目要求使用Unix高级IPC机制（包括信号量和共享内存）来实现进程同步。

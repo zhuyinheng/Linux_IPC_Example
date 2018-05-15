@@ -1,0 +1,17 @@
+2
+1
+5
+5
+200
+car_no_1
+w aaa 2 1
+w bbb 2 2
+r 4 1 1
+r 4 1 2
+end.
+car_no_2
+w ccc 2 1
+w ddd 2 2
+r 4 1 1
+r 4 1 2
+end.
