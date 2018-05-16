@@ -1,4 +1,7 @@
 # Linux_IPC_Example
+
+**FOR LATEST VERSION,PLEASE CHECK [HERE](https://github.com/cow8/Linux_IPC_Example)**
+
 ## 环境要求
 - g++ 5.4
 - cmake 3.5
