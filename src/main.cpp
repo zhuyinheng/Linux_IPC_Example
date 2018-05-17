@@ -6,7 +6,7 @@
 using namespace std;
 int main()
 {
-	freopen("./sample.in", "r", stdin);
+	freopen("/home/ubuntu/linuxproj/sample.in", "r", stdin);
 	//freopen("/home/ubuntu/linuxproj/sample.out", "a", stdout);
 	tunnel T;
 	pid_t mypid;
@@ -21,14 +21,13 @@ int main()
 		if (mypid == 0)
 		{
 			vehicle_number = i;
-			printf("[Info]:  Car %d is coming\n", vehicle_number);
+			printf("[Info, Timestamp:%s]:  Car %d is coming\n", getTime().c_str(),vehicle_number);
 			break;
 		}
 	}
 
 	if (mypid == 0)//child
 	{
-		//freopen("/home/ubuntu/linuxproj/sample.out", "a", stdout);
 		vehicle my_car(T,vehicle_number);
 		my_car.run();
 	}

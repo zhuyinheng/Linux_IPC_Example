@@ -1,18 +1,18 @@
 #include "vehicle.h"
 #include <stdlib.h>  
 #include <stdio.h>  
+
 #include <unistd.h>
 #include <string>
 #include <iostream>
 #include <sys/ipc.h>
 #include <sys/sem.h>
-#include <sys/time.h>  
-
+#include <time.h>  
+#include <sys/time.h>
 using namespace std;
 
 vehicle::vehicle(tunnel &T,int id)
 {
-	this->need_to_go = false;
 	this->id = id;
 	this->T = &T;
 	my_r = T.r[id];
@@ -44,7 +44,7 @@ void vehicle::waiting_and_in()
 		P(semid, 0);
 		if (*count > 0)
 		{
-			printf("[Info]:  Car %d is in the tunnel\n", this->id);
+			printf("[Info, Timestamp:%s]:  Car %d is in the tunnel\n", getTime().c_str(),this->id);
 			*count = *count - 1;
 			V(semid, 0);
 			break;
@@ -52,13 +52,14 @@ void vehicle::waiting_and_in()
 		else
 		{
 			V(semid, 0);
+
 			if (idx_r >= my_r.size() && idx_w >= my_w.size())
 			{
 				continue;
 			}
 			if (idx_r < my_r.size() && idx_w >= my_w.size())
 			{
-				printf("[Info]:  Car %d is outside the tunnel reading for %d sec\n", this->id, my_r[idx_r].duration);
+				printf("[Info, Timestamp:%s]:  Car %d is outside the tunnel reading for %d sec\n",getTime().c_str(), this->id, my_r[idx_r].duration);
 				sleep(my_r[idx_r].duration);
 				idx_r++;
 				continue;
@@ -66,7 +67,7 @@ void vehicle::waiting_and_in()
 
 			if (idx_r >= my_r.size() && idx_w < my_w.size())
 			{
-				printf("[Info]:  Car %d is outside the tunnel writing for %d sec\n", this->id, my_w[idx_w].duration);
+				printf("[Info, Timestamp:%s]:  Car %d is outside the tunnel writing for %d sec\n", getTime().c_str(), this->id, my_w[idx_w].duration);
 				sleep(my_w[idx_w].duration);
 				idx_w++;
 				continue;
@@ -74,13 +75,13 @@ void vehicle::waiting_and_in()
 
 			if (my_r[idx_r].id < my_w[idx_w].id)
 			{
-				printf("[Info]:  Car %d is outside the tunnel reading for %d sec\n", this->id, my_r[idx_r].duration);
+				printf("[Info, Timestamp:%s]:  Car %d is outside the tunnel reading for %d sec\n", getTime().c_str(), this->id, my_r[idx_r].duration);
 				sleep(my_r[idx_r].duration);
 				idx_r++;
 			}
 			else
 			{
-				printf("[Info]:  Car %d is outside the tunnel writing for %d sec\n", this->id, my_w[idx_w].duration);
+				printf("[Info, Timestamp:%s]:  Car %d is outside the tunnel writing for %d sec\n", getTime().c_str(), this->id, my_w[idx_w].duration);
 				sleep(my_w[idx_w].duration);
 				idx_w++;
 			}
@@ -96,9 +97,12 @@ void vehicle::leave()
 	*count=*count+1;
 	V(this->sem_waiting, 0);
 	struct timeval now;
+	struct timespec tpend;
 	gettimeofday(&now, NULL);
-	printf("[Info]:  Car %d is leaving\n",this->id);
-	printf("[Detail]:        Runing time:%lf:\n", (((double)(now.tv_sec - this->start_time.tv_sec))));
+	clock_gettime(CLOCK_MONOTONIC, &(tpend));
+	printf("[Info, Timestamp:%s]:  Car %d is leaving\n", getTime().c_str(), this->id);
+	printf("[Detail]:        Runing time(excluding waiting):%lf sec:\n", (((double)(now.tv_sec - this->start_time_excluding_waiting.tv_sec))));
+	printf("[Detail]:        Runing time(including waiting):%ld mu sec:\n", 1000000 *(tpend.tv_sec - start_time_including_waiting.tv_sec) + (tpend.tv_nsec - start_time_including_waiting.tv_nsec) / 1000);
 	printf("[Detail]:        Memory Summary:\n");
 	for (int i = 0; i < readed_msg.size(); i++)
 	{
@@ -117,28 +121,6 @@ void vehicle::leave()
 		}
 		printf("\n");
 	}
-	/*P(this->sem_waiting, 0);
-	if (*count == T->maximum_number_of_cars_in_tunnel)
-	{
-		printf("*************************************************\n");
-		printf("[Info]:                 Tunnel Status\n");
-		printf("[Detail]:                    Tunnel Memory:\n");
-		for (int i = 0; i < T->total_number_of_mailboxes; i++)
-		{
-			printf("[Detail]:                    mailbox No.%d:",i);
-			for (int j = 0; j < T->memory_segment_size; j++)
-			{
-				if (content[i*T->memory_segment_size + j] == 0)
-				{
-					break;
-				}
-				printf("%c", content[i*T->memory_segment_size + j]);
-			}
-			printf("\n");
-		}
-		printf("*************************************************\n");
-	}
-	V(this->sem_waiting, 0);*/
 }
 
 
@@ -191,13 +173,15 @@ void vehicle::read_from_mailbox(r_message msg, vector<int> &rt)
 void vehicle::run()
 {
 	
+	clock_gettime(CLOCK_MONOTONIC, &(this->start_time_including_waiting));
 	waiting_and_in();
-	gettimeofday(&(this->start_time), NULL);
+	gettimeofday(&(this->start_time_excluding_waiting), NULL);
+	
 	while (idx_r < my_r.size() && idx_w < my_w.size())
 	{
 		struct timeval now;
 		gettimeofday(&(now), NULL);
-		if (now.tv_sec-this->start_time.tv_sec > this->T->tunnel_travel_time)
+		if (now.tv_sec-this->start_time_excluding_waiting.tv_sec >= this->T->tunnel_travel_time)
 		{
 			break;
 		}
@@ -205,7 +189,7 @@ void vehicle::run()
 		{
 			vector<int>	rt;
 			read_from_mailbox(my_r[idx_r], rt);
-			printf("[Info]:  Car %d is Reading\n", this->id);
+			printf("[Info, Timestamp:%s]:  Car %d is Reading\n", getTime().c_str(), this->id);
 			printf("[Detail]:        Read %d sec in mailbox No. %d\n", my_r[idx_r].duration, my_r[idx_r].mailbox_number);
 			printf("[Detail]:        The content:");
 			for (int i = 0; i < rt.size(); i++)
@@ -225,7 +209,7 @@ void vehicle::run()
 		else
 		{
 			write_to_mailbox(my_w[idx_w]);
-			printf("[Info]:  Car %d is Writing\n", this->id);
+			printf("[Info, Timestamp:%s]:  Car %d is Writing\n", getTime().c_str(), this->id);
 			printf("[Detail]:        Write %d sec in mailbox No. %d\n", my_w[idx_w].duration, my_w[idx_w].mailbox_number);
 			printf("[Detail]:        The content:");
 			cout << my_w[idx_w].message << endl;
@@ -236,13 +220,13 @@ void vehicle::run()
 	{
 		struct timeval now;
 		gettimeofday(&(now), NULL);
-		if (now.tv_sec - this->start_time.tv_sec > this->T->tunnel_travel_time)
+		if (now.tv_sec - this->start_time_excluding_waiting.tv_sec >= this->T->tunnel_travel_time)
 		{
 			break;
 		}
 		vector<int>	rt;
 		read_from_mailbox(my_r[idx_r], rt);
-		printf("[Info]:  Car %d is Reading\n", this->id);
+		printf("[Info, Timestamp:%s]:  Car %d is Reading\n", getTime().c_str(), this->id);
 		printf("[Detail]:        Read %d sec in mailbox No. %d\n", my_r[idx_r].duration, my_r[idx_r].mailbox_number);
 		printf("[Detail]:        The content:");
 		for (int i = 0; i < rt.size(); i++)
@@ -263,12 +247,12 @@ void vehicle::run()
 	{
 		struct timeval now;
 		gettimeofday(&(now), NULL);
-		if (now.tv_sec - this->start_time.tv_sec > this->T->tunnel_travel_time)
+		if (now.tv_sec - this->start_time_excluding_waiting.tv_sec >= this->T->tunnel_travel_time)
 		{
 			break;
 		}
 		write_to_mailbox(my_w[idx_w]);
-		printf("[Info]:  Car %d is Writing\n", this->id);
+		printf("[Info, Timestamp:%s]:  Car %d is Writing\n", getTime().c_str(), this->id);
 		printf("[Detail]:        Write %d sec in mailbox No. %d\n", my_w[idx_w].duration, my_w[idx_w].mailbox_number);
 		printf("[Detail]:        The content:");
 		cout << my_w[idx_w].message << endl;
@@ -277,10 +261,10 @@ void vehicle::run()
 	
 	struct timeval now;
 	gettimeofday(&(now), NULL);
-	if (now.tv_sec - this->start_time.tv_sec < this->T->tunnel_travel_time)
+	if (now.tv_sec - this->start_time_excluding_waiting.tv_sec < this->T->tunnel_travel_time)
 	{
-		printf("[Info]:  Car %d is Runing\n", this->id);
-		sleep(this->T->tunnel_travel_time - ((double)(now.tv_sec - this->start_time.tv_sec)));
+		printf("[Info, Timestamp:%s]:  Car %d is Runing\n", getTime().c_str(), this->id);
+		sleep(this->T->tunnel_travel_time - ((double)(now.tv_sec - this->start_time_excluding_waiting.tv_sec)));
 	}
 	leave();
 

@@ -23,10 +23,10 @@ using namespace std;
 extern void create_sem(int key, int number);
 extern void create_sharedmem(int key, int number);
 extern int load_sem(int key);
-extern int comm_sem_op(int semid, int which, int op);
 extern int P(int semid, int which);
 extern int V(int semid, int which);
 extern void *load_mem(int key);
+extern string getTime();
 class r_message
 {
 public:

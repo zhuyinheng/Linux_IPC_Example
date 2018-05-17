@@ -12,7 +12,8 @@ private:
 	vector<w_message> my_w;
 	int id;
 	tunnel *T;
-	struct timeval start_time;
+	struct timeval start_time_excluding_waiting;
+	struct timespec start_time_including_waiting;
 	int *count,
 		*content,
 		*reader_count,
@@ -21,7 +22,6 @@ private:
 		sem_mutex_read_or_write,
 		sem_mutex_writer,
 		sem_waiting;
-	bool need_to_go;
 	vector<vector<int> > readed_msg;
 public:
 	vehicle(tunnel &T, int id);

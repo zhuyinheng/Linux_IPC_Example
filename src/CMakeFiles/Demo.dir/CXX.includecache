@@ -83,6 +83,8 @@ sys/ipc.h
 -
 sys/sem.h
 -
+time.h
+-
 sys/time.h
 -
 
